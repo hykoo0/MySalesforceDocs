@@ -1,0 +1,12 @@
+1. Go to copado
+2. Use story list view > All
+3. Search user story
+4. Go to build tab
+5. Add credential > Developer POC > Click Save
+6. Click Commit Changes on top
+7. Filter by components which u want to deploy > click on selected metadata
+8. Click Commit Changes
+9. Click  Validate Changes
+10. Go to deliver tab to check its validated successfully 
+11. On the same tab > click on "promote and deploy" 
+12. Scroll down to User Story option > right click and open in new tab

@@ -1,0 +1,16 @@
+Certificate revocation check fails
+Related issue: #3326
+
+If you are using Desktop on a corporate network, you may encounter an error like this:
+
+fatal: unable to access 'https://github.com/owner/name.git/': schannel: next InitializeSecurityContext failed: Unknown error (0x80092012) - The revocation function was unable to check revocation for the certificate.
+GitHub Desktop by default uses the Windows Secure Channel (SChannel) APIs to validate the certificate received from a server. Some networks will block the attempts by Windows to check the revocation status of a certificate, which then causes the whole operation to error.
+
+Workaround:
+
+We do not recommend setting this config value for normal Git usage. This is intended to be an "escape hatch" for situations where the network administrator has restricted the normal usage of SChannel APIs on Windows that Git is trying to use.
+
+Run this command in your Git shell to disable the revocation check:
+
+git config --global http.schannelCheckRevoke false
+git config --global http.sslBackend schannel

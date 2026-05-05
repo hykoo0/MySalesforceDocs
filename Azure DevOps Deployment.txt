@@ -1,0 +1,87 @@
+Azure DevOps Setup:
+-------------------
+
+OpenSSL Installation
+---------------------
+Ref: https://www.youtube.com/shorts/2SMNjN1QMjQ
+Step 1: Install Openssl from 'slproweb.com' site
+Step 2: Add environmental variable. From start open 'Edit System Environmental Variables' and Click Environmental Variables button
+Step 3: In the system variable section add the path.
+
+Certificate Creation
+---------------------
+Ref: https://abhisheksubbu.github.io/salesforce-azure-devops/
+Step 4: Open windows terminal and execute the comment 'openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out server.key'. This creates the private key named ‘server.key’.
+Step 5: Execute the comment 'openssl req -new -key server.key -out server.csr'
+Step 6: Execute the comment 'openssl x509 -req -sha256 -days 365 -in server.csr -signkey server.key -out server.crt'. This will generate the server.crt in the path where comment executed.
+
+External Client App Creation
+-----------------------------
+Step 7: In setup, External Client Apps > Settings > Enable 'Allow access to External Client App consumer secrets via REST API'
+Step 8: Then Go to External Client App Manager Provide the details of External Client App Name, API Name, Contact Email, Distrubution State = Local
+Step 9: Expand API (Enable OAuth Settings) and check 'Enable OAuth'
+Step 10: Provide Callback URL = http://localhost:1717/OauthRedirect
+Step 11: Add Auth Scopes [(id, profile, email, address, phone), (api), (refresh_token, offline_access), (web)]
+Step 12: In Flow Enablement section check Enable JWT Bearer Flow and add the server.crt and Go down and Click Create
+Step 13: From Policies edit OAuth Policies Section and Select Permitted Users as 'Admin approved users are pre-authorized'
+Step 14: From App Policies section, in Select Profiles add Admin profile.
+Step 15: From Settings tab click "Consumer Key and Secret" button and store the values in notepad.
+Step 16: Open the Terminal from the file location where server.key stored and execute the comment to check whether connection is working or not 'sf org login jwt --client-id 3MVG9pRzvMkjMb6nivPvY0F05KVQzfL_SJrk1JwIZQYy5BqEiIXgVxTI84vN1iJ0Tukqj7q1wXC7oOnbJPP5m --jwt-key-file server.key --username chandru.hykoo@salesforce.com --instance-url https://login.salesforce.com'
+Step 17: If comment executed from VS Code terminal then create folder called buildfiles and paste the server.key there.
+
+Project Setup in Azure
+-----------------------
+In this step, we will create a project in Azure account.
+
+Login to dev.azure.com
+Create a new project named “SF DevOps” and save it.
+Visibility should be Private
+Version Control should be selected as Git
+Work Item Process can be left with default option (Agile)
+Open the project.
+Click the “Repos” tab.
+Click on “Generate Git Credentials”. Copy the username and password somewhere safely. If you refresh this screen, you will not be able to see the password again. We will require this username & password when executing git commands. (I needed this step while configuring the DevOps in Ubuntu Linux machine. While trying out in Windows machine, it didn’t even need this generated Git credentials.)
+
+And then flow instructions from https://abhisheksubbu.github.io/salesforce-azure-devops/
+
+Azure-pipeline.yml file 
+
+# Starter pipeline
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - README.md
+      - azure-pipelines.yml
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - README.md
+
+jobs:
+- job: Deploy
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  steps:
+    - task: UseNode@1
+      inputs:
+        version: '18.x' # Best practice to specify a version
+    - bash: npm install @salesforce/cli --global
+      displayName: Install Salesforce CLI
+    - bash: |
+        sf org login jwt \
+          --client-id $(salesforceDevOrgClientId) \
+          --jwt-key-file ./buildfiles/server.key \
+          --username $(salesforceDevOrgUserName) \
+          --instance-url $(salesforceDevOrgInstanceURL) \
+          --alias devOrg
+      displayName: Authorize salesforce org
+    - bash: sf project deploy validate --manifest ./manifest/package.xml --target-org devOrg
+      displayName: Run validation on source code
